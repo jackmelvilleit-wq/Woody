@@ -1,0 +1,440 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Woody — Mission Control</title>
+<style>
+  :root {
+    --bg: #0f1115; --panel: #171a21; --border: #262b36;
+    --text: #e6e9ef; --muted: #8b93a3;
+    --ok: #3fb950; --warn: #d29922; --bad: #f85149; --accent: #6ea8fe;
+  }
+  * { box-sizing: border-box; margin: 0; }
+  body {
+    background: var(--bg); color: var(--text);
+    font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    padding: 1.5rem; max-width: 1380px; margin: 0 auto;
+  }
+  header { display: flex; align-items: baseline; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.2rem; }
+  header h1 { font-size: 1.4rem; letter-spacing: .04em; }
+  header .sub { color: var(--muted); font-size: .85rem; }
+  #hostinfo { margin-left: auto; color: var(--muted); font-size: .85rem; }
+  h2 { font-size: .8rem; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 1.6rem 0 .7rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: .8rem; }
+
+  /* ── launchpad ─────────────────────────────────────── */
+  .lp-group { margin-bottom: .6rem; }
+  .lp-label { font-size: .72rem; color: var(--muted); letter-spacing: .08em; text-transform: uppercase; margin: .6rem 0 .35rem; }
+  .lp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: .5rem; }
+  a.lp {
+    display: flex; align-items: center; gap: .5rem;
+    background: var(--panel); border: 1px solid var(--border); border-radius: 8px;
+    padding: .5rem .65rem; color: var(--text); text-decoration: none;
+    font-size: .85rem; white-space: nowrap; overflow: hidden;
+  }
+  a.lp:hover { border-color: var(--accent); color: var(--accent); }
+  a.lp .ic { flex: none; }
+
+  /* ── woody section ─────────────────────────────────── */
+  .woody-wrap { display: grid; grid-template-columns: minmax(0,1fr) minmax(320px,430px); gap: .8rem; align-items: start; }
+  @media (max-width: 900px) { .woody-wrap { grid-template-columns: 1fr; } }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: .8rem; }
+  .tile {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: .8rem 1rem;
+  }
+  .tile .v { font-size: 1.45rem; font-weight: 650; line-height: 1.2; word-break: break-word; }
+  .tile .k { color: var(--muted); font-size: .78rem; margin-top: .15rem; }
+  .tile .s { display: flex; align-items: center; gap: .45rem; font-size: 1.05rem; font-weight: 600; }
+  #runs-recent { margin-top: .8rem; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; padding: .7rem .9rem; }
+  #runs-recent .row { display: flex; gap: .6rem; align-items: baseline; font-size: .82rem; padding: .18rem 0; }
+  #runs-recent .row .wf { color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #runs-recent .row .when { color: var(--muted); margin-left: auto; flex: none; }
+  #brain { margin-top: .8rem; background: var(--panel); border: 1px solid var(--border); border-radius: 10px; }
+  #brain summary { cursor: pointer; padding: .6rem .9rem; font-size: .85rem; color: var(--muted); }
+  #brain summary:hover { color: var(--accent); }
+  #brain textarea {
+    display: block; width: calc(100% - 1.8rem); margin: 0 .9rem; min-height: 220px;
+    background: var(--bg); color: var(--text); border: 1px solid var(--border);
+    border-radius: 8px; padding: .6rem; font: .8rem/1.45 ui-monospace, monospace; resize: vertical;
+  }
+  #brain .brain-foot { display: flex; align-items: center; gap: .8rem; padding: .6rem .9rem; }
+  #brain .brain-foot .k { color: var(--muted); font-size: .78rem; }
+  #brain .brain-foot button { margin-left: auto; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+  .dot.running, .dot.sent { background: var(--ok); }
+  .dot.partial { background: var(--warn); }
+  .dot.stopped, .dot.error { background: var(--bad); }
+  .dot.idle { background: var(--muted); }
+
+  /* ── chat ──────────────────────────────────────────── */
+  #chat {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    display: flex; flex-direction: column; height: 480px;
+  }
+  #chat .head { display: flex; align-items: center; gap: .5rem; padding: .6rem .8rem; border-bottom: 1px solid var(--border); }
+  #chat .head .t { font-weight: 600; font-size: .9rem; }
+  #chat select {
+    margin-left: auto; background: var(--bg); color: var(--text);
+    border: 1px solid var(--border); border-radius: 6px; font-size: .78rem; padding: .15rem .3rem;
+  }
+  #msgs { flex: 1; overflow-y: auto; padding: .7rem .8rem; display: flex; flex-direction: column; gap: .55rem; }
+  .msg { max-width: 92%; padding: .45rem .65rem; border-radius: 10px; font-size: .86rem; white-space: pre-wrap; word-break: break-word; }
+  .msg.user { align-self: flex-end; background: #1d2f52; border: 1px solid #2b4370; }
+  .msg.bot  { align-self: flex-start; background: var(--bg); border: 1px solid var(--border); }
+  .msg.bot.busy::after { content: "▍"; animation: blink 1s infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  #chatform { display: flex; gap: .5rem; padding: .6rem .8rem; border-top: 1px solid var(--border); }
+  #chatform input {
+    flex: 1; background: var(--bg); border: 1px solid var(--border); color: var(--text);
+    border-radius: 8px; padding: .45rem .6rem; font-size: .86rem;
+  }
+  #chatform input:focus { outline: none; border-color: var(--accent); }
+
+  /* ── app cards (unchanged) ─────────────────────────── */
+  .card {
+    background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+    padding: .9rem 1rem; display: flex; flex-direction: column; gap: .5rem;
+  }
+  .card .top { display: flex; align-items: center; gap: .55rem; }
+  .card .name { font-weight: 600; }
+  .card .name a { color: var(--text); text-decoration: none; }
+  .card .name a:hover { color: var(--accent); }
+  .card .desc { color: var(--muted); font-size: .85rem; }
+  .containers { font-size: .78rem; color: var(--muted); }
+  .containers div { display: flex; justify-content: space-between; gap: .5rem; }
+  .containers .st-running { color: var(--ok); }
+  .containers .st-exited, .containers .st-created { color: var(--muted); }
+  .containers .st-restarting, .containers .st-dead { color: var(--bad); }
+  .actions { display: flex; gap: .4rem; margin-top: .2rem; }
+  button {
+    background: transparent; border: 1px solid var(--border); color: var(--text);
+    border-radius: 6px; padding: .25rem .7rem; font-size: .8rem; cursor: pointer;
+  }
+  button:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  button:disabled { opacity: .35; cursor: default; }
+  button.busy { opacity: .5; }
+  .open-link { margin-left: auto; font-size: .8rem; color: var(--accent); text-decoration: none; align-self: center; }
+  #error { color: var(--bad); margin: 1rem 0; display: none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>🪵 WOODY</h1>
+  <span class="sub">Workflow Orchestration &amp; Operations Deputy, at Your service</span>
+  <span id="hostinfo"></span>
+</header>
+<div id="error"></div>
+
+<h2>Launchpad</h2>
+<div id="launchpad"></div>
+
+<h2>Woody — agent</h2>
+<div class="woody-wrap">
+  <div>
+    <div class="tiles" id="agent-tiles"></div>
+    <div id="runs-recent" hidden></div>
+    <details id="brain">
+      <summary>⚙ Woody's brain — system prompt (edit &amp; rebuild)</summary>
+      <textarea id="brain-text" spellcheck="false"></textarea>
+      <div class="brain-foot">
+        <span id="brain-status" class="k"></span>
+        <button id="brain-save">Save &amp; rebuild model</button>
+      </div>
+    </details>
+  </div>
+  <div id="chat">
+    <div class="head">
+      <span class="dot idle" id="chat-dot"></span><span class="t">Chat with Woody</span>
+      <select id="chat-model">
+        <option value="woody">Woody (qwen3:8b — thorough)</option>
+        <option value="qwen3:1.7b">Fast (qwen3:1.7b)</option>
+      </select>
+    </div>
+    <div id="msgs"></div>
+    <form id="chatform">
+      <input id="chatinput" placeholder="Ask Woody… (e.g. what could we automate next?)" autocomplete="off">
+      <button type="submit" id="chatsend">Send</button>
+    </form>
+  </div>
+</div>
+
+<main id="apps"></main>
+
+<script>
+const ROLE_ORDER = [
+  ["orchestration", "Orchestration"],
+  ["agents",        "Agent builders"],
+  ["models",        "Models"],
+  ["memory",        "Memory & knowledge"],
+  ["business",      "Business systems"],
+  ["observability", "Observability"],
+  ["control",       "Control"],
+  [null,            "Infrastructure"],
+];
+let busy = new Set();
+
+/* ── launchpad ──────────────────────────────────────── */
+const H = location.hostname;
+const LAUNCHPAD = [
+  ["This server", [
+    ["🔀", "n8n",         `http://${H}:5678`],
+    ["💬", "Open WebUI",  `http://${H}:3000`],
+    ["🧩", "Flowise",     `http://${H}:3001`],
+    ["📚", "Khoj",        `http://${H}:42110`],
+    ["📈", "OpenObserve", `http://${H}:5080`],
+    ["📓", "Runbook",     "/runbook"],
+  ]],
+  ["AI chat", [
+    ["🟠", "Claude",   "https://claude.ai"],
+    ["🟢", "ChatGPT",  "https://chatgpt.com"],
+    ["💎", "Gemini",   "https://gemini.google.com"],
+    ["🟦", "Copilot",  "https://copilot.microsoft.com"],
+    ["⚡", "Groq",     "https://chat.groq.com"],
+    ["🌙", "Kimi",     "https://www.kimi.com"],
+  ]],
+  ["AI platforms", [
+    ["🔁", "OpenRouter",       "https://openrouter.ai"],
+    ["🤗", "Hugging Face",     "https://huggingface.co"],
+    ["🧠", "Anthropic Console","https://console.anthropic.com"],
+    ["🔬", "OpenAI Platform",  "https://platform.openai.com"],
+    ["🛠️", "Groq Console",     "https://console.groq.com"],
+    ["🦙", "Ollama Library",   "https://ollama.com/library"],
+  ]],
+  ["Work", [
+    ["✅", "Asana",          "https://app.asana.com"],
+    ["📧", "Outlook",        "https://outlook.office.com"],
+    ["👥", "Teams",          "https://teams.microsoft.com"],
+    ["🏢", "M365 Admin",     "https://admin.microsoft.com"],
+    ["☁️", "Azure",          "https://portal.azure.com"],
+    ["🛡️", "Sophos Central", "https://central.sophos.com"],
+    ["🥷", "NinjaOne",       "https://app.ninjarmm.com/"],
+    ["💾", "Druva",          "https://dell-login.druva.com/login"],
+    ["🦗", "M.A.N.T.I.S",    "http://192.168.50.75:3000/"],
+    ["🌐", "Auvik",          "https://auth.auvik.com/#msp/root/clients"],
+    ["🐙", "GitHub",         "https://github.com"],
+  ]],
+];
+function renderLaunchpad() {
+  const root = document.getElementById("launchpad");
+  for (const [label, links] of LAUNCHPAD) {
+    const g = document.createElement("div"); g.className = "lp-group";
+    const l = document.createElement("div"); l.className = "lp-label"; l.textContent = label;
+    const grid = document.createElement("div"); grid.className = "lp-grid";
+    for (const [ic, name, href] of links) {
+      const a = document.createElement("a");
+      a.className = "lp"; a.href = href; a.target = "_blank"; a.rel = "noopener";
+      a.innerHTML = `<span class="ic">${ic}</span><span>${name}</span>`;
+      grid.appendChild(a);
+    }
+    g.appendChild(l); g.appendChild(grid); root.appendChild(g);
+  }
+}
+
+/* ── shared api helper ──────────────────────────────── */
+async function api(path, opts) {
+  const r = await fetch(path, opts);
+  if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+  return r.json();
+}
+function showError(msg) {
+  const e = document.getElementById("error");
+  e.textContent = msg; e.style.display = "block";
+  setTimeout(() => e.style.display = "none", 8000);
+}
+
+/* ── agent metrics ──────────────────────────────────── */
+function tile(html) { const d = document.createElement("div"); d.className = "tile"; d.innerHTML = html; return d; }
+function esc(s) { const d = document.createElement("div"); d.textContent = String(s ?? ""); return d.innerHTML; }
+async function loadAgent() {
+  try {
+    const a = await api("/api/agent");
+    const t = document.getElementById("agent-tiles");
+    t.innerHTML = "";
+    const runs = a.runs;
+    const last = runs?.recent?.[0];
+    const lastState = last ? (last.status === "sent" || last.status === "ok" ? "sent" : "error") : "idle";
+    const lastLabel = last ? `${last.status}` : "no runs yet";
+    t.appendChild(tile(`<div class="v">${runs ? runs.count_7d : "–"}</div><div class="k">agent runs, last 7 days</div>`));
+    t.appendChild(tile(`<div class="s"><span class="dot ${lastState}"></span>${esc(lastLabel)}</div><div class="k">last run${last ? " · " + new Date(last._timestamp / 1000).toLocaleString() : ""}</div>`));
+    t.appendChild(tile(`<div class="v">${a.loaded.length ? esc(a.loaded.join(", ")) : "idle"}</div><div class="k">model in memory</div>`));
+    t.appendChild(tile(`<div class="v">${a.models.length}</div><div class="k">models available</div>`));
+    const tk = a.tokens || {};
+    t.appendChild(tile(`<div class="v">${(tk.in ?? 0).toLocaleString()}</div><div class="k">tokens in · chat, since restart</div>`));
+    t.appendChild(tile(`<div class="v">${(tk.out ?? 0).toLocaleString()}</div><div class="k">tokens out${tk.last_tps ? " · " + tk.last_tps + " tok/s last" : ""}</div>`));
+    if (a.host) {
+      t.appendChild(tile(`<div class="v">${a.host.cpu_pct}%</div><div class="k">host CPU · load ${a.host.load1} / ${a.host.cpus} cores</div>`));
+      t.appendChild(tile(`<div class="v">${a.host.mem_used_gb} GB</div><div class="k">host RAM used of ${a.host.mem_total_gb} GB</div>`));
+    }
+    const rr = document.getElementById("runs-recent");
+    if (runs?.recent?.length) {
+      rr.hidden = false;
+      rr.innerHTML = runs.recent.map(r =>
+        `<div class="row"><span class="dot ${r.status === "sent" || r.status === "ok" ? "sent" : "error"}"></span>
+         <span class="wf">${esc(r.workflow)}</span>
+         <span class="when">${new Date(r._timestamp / 1000).toLocaleString()}</span></div>`).join("");
+    }
+  } catch (e) { /* metrics are non-fatal */ }
+}
+
+/* ── brain editor ───────────────────────────────────── */
+let brainLoaded = false;
+document.getElementById("brain").addEventListener("toggle", async (ev) => {
+  if (!ev.target.open || brainLoaded) return;
+  try {
+    const c = await api("/api/woody/config");
+    document.getElementById("brain-text").value = c.system;
+    document.getElementById("brain-status").textContent = `base model: ${c.base_model}`;
+    brainLoaded = true;
+  } catch (e) { document.getElementById("brain-status").textContent = "⚠ " + e.message; }
+});
+document.getElementById("brain-save").addEventListener("click", async () => {
+  const btn = document.getElementById("brain-save");
+  const st = document.getElementById("brain-status");
+  btn.disabled = true; st.textContent = "saving & rebuilding…";
+  try {
+    await api("/api/woody/config", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ system: document.getElementById("brain-text").value }),
+    });
+    st.textContent = "✔ brain saved, model rebuilt — new chats use it immediately";
+  } catch (e) { st.textContent = "⚠ " + e.message; }
+  finally { btn.disabled = false; }
+});
+
+/* ── woody chat ─────────────────────────────────────── */
+const chatHistory = [];
+const msgsEl = document.getElementById("msgs");
+function addMsg(cls, text) {
+  const d = document.createElement("div");
+  d.className = "msg " + cls; d.textContent = text;
+  msgsEl.appendChild(d); msgsEl.scrollTop = msgsEl.scrollHeight;
+  return d;
+}
+document.getElementById("chatform").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const input = document.getElementById("chatinput");
+  const send = document.getElementById("chatsend");
+  const dotEl = document.getElementById("chat-dot");
+  const text = input.value.trim();
+  if (!text || send.disabled) return;
+  input.value = "";
+  addMsg("user", text);
+  chatHistory.push({ role: "user", content: text });
+  const botEl = addMsg("bot busy", "");
+  send.disabled = true; dotEl.className = "dot partial";
+  let full = "";
+  try {
+    const r = await fetch("/api/chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ model: document.getElementById("chat-model").value, messages: chatHistory }),
+    });
+    if (!r.ok) throw new Error(`${r.status} ${await r.text()}`);
+    const reader = r.body.getReader();
+    const dec = new TextDecoder();
+    let buf = "";
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += dec.decode(value, { stream: true });
+      const lines = buf.split("\n"); buf = lines.pop();
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        const j = JSON.parse(line);
+        if (j.error) throw new Error(j.error);
+        if (j.message?.content) {
+          full += j.message.content;
+          botEl.textContent = full;
+          msgsEl.scrollTop = msgsEl.scrollHeight;
+        }
+      }
+    }
+    chatHistory.push({ role: "assistant", content: full });
+    dotEl.className = "dot sent";
+  } catch (e) {
+    botEl.textContent = full ? full + "\n[interrupted: " + e.message + "]" : "⚠ " + e.message;
+    dotEl.className = "dot error";
+  } finally {
+    botEl.classList.remove("busy");
+    send.disabled = false; input.focus();
+  }
+});
+
+/* ── app cards (original behavior) ──────────────────── */
+function card(app) {
+  const el = document.createElement("div");
+  el.className = "card";
+  const isBusy = busy.has(app.app);
+  const canControl = !app.protected;
+  const running = app.state === "running";
+  el.innerHTML = `
+    <div class="top">
+      <span class="dot ${app.state}" title="${app.state}"></span>
+      <span class="name">${app.url ? `<a href="${app.url}" target="_blank">${app.app}</a>` : app.app}</span>
+      ${app.url ? `<a class="open-link" href="${app.url}" target="_blank">open ↗</a>` : ""}
+    </div>
+    ${app.description ? `<div class="desc">${app.description}</div>` : ""}
+    <div class="containers">
+      ${app.containers.map(c => `
+        <div><span>${c.name}</span>
+        <span class="st-${c.status}">${c.status}${c.health ? " · " + c.health : ""}${c.memory_mb != null ? " · " + c.memory_mb + " MB" : ""}</span></div>`).join("")}
+    </div>
+    <div class="actions">
+      <button data-a="start"   ${(!canControl && app.app !== "infra") || running || isBusy ? "disabled" : ""}>start</button>
+      <button data-a="stop"    ${!canControl || !running && app.state !== "partial" || isBusy ? "disabled" : ""}>stop</button>
+      <button data-a="restart" ${!canControl || isBusy ? "disabled" : ""}>restart</button>
+    </div>`;
+  el.querySelectorAll("button").forEach(b => b.onclick = async () => {
+    busy.add(app.app); b.classList.add("busy"); render();
+    try { await api(`/api/apps/${app.app}/${b.dataset.a}`, { method: "POST" }); }
+    catch (e) { showError(e.message); }
+    finally { busy.delete(app.app); refresh(true); }
+  });
+  return el;
+}
+
+let lastData = null;
+function render() {
+  if (!lastData) return;
+  const main = document.getElementById("apps");
+  main.innerHTML = "";
+  for (const [role, title] of ROLE_ORDER) {
+    const group = lastData.apps.filter(a => (a.role || null) === role);
+    if (!group.length) continue;
+    const h = document.createElement("h2");
+    h.textContent = title;
+    const grid = document.createElement("div");
+    grid.className = "grid";
+    group.forEach(a => grid.appendChild(card(a)));
+    main.appendChild(h); main.appendChild(grid);
+  }
+}
+
+let statTick = 0;
+async function refresh(force) {
+  try {
+    const withStats = force || (statTick++ % 3 === 0);
+    lastData = await api(`/api/apps?stats=${withStats}`);
+    render();
+  } catch (e) { showError(e.message); }
+}
+
+async function loadHost() {
+  try {
+    const h = await api("/api/host");
+    document.getElementById("hostinfo").textContent =
+      `${h.host} · ${h.mem_available_gb} / ${h.mem_total_gb} GB free · docker ${h.docker_version}`;
+  } catch (e) { /* non-fatal */ }
+}
+
+renderLaunchpad();
+refresh(true); loadHost(); loadAgent();
+setInterval(refresh, 5000);
+setInterval(loadHost, 30000);
+setInterval(loadAgent, 60000);
+</script>
+</body>
+</html>
